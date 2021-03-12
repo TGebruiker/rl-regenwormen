@@ -1,15 +1,18 @@
 from tensorforce.agents import Agent
 from .game import Game
 from progress.bar import IncrementalBar as Bar
-
+import json
 
 def main(nplayers):
     print("creating environment...")
     environment = Game(nplayers)
     print("creating agents...")
-    agents = [Agent.create(agent='ppo',
-                           batch_size=10,
-                           learning_rate=1e-3,
+    
+    with open("rl-regenwormen/agent.json", 'r') as fp:
+        agent = json.load(fp=fp)
+
+
+    agents = [Agent.create(agent=agent,
                            environment=environment
                            #    summarizer=dict(
                            #        directory='../summaries',
@@ -18,16 +21,27 @@ def main(nplayers):
                            ) for i in range(nplayers)]
 
     print("starting training...")
-    i = 100
+    i = 10000000
     bar = Bar('Training', max=i)
-    for _ in range(100):
+    rewards = {i: 0 for i in range(nplayers)}
+    for _ in range(10000000):
+        for agent in agents:
+            agent.reset()
         states = environment.reset()
         terminal = False
         while not terminal:
-            agent = agents[environment.current_player]
-            actions = agent.act(states=states)
-            states, terminal, reward = environment.execute(actions=actions)
-            agent.observe(terminal=terminal, reward=reward)
+            try:
+                agent = agents[environment.current_player]
+                actions = agent.act(states=states)
+                states, terminal, reward = environment.execute(actions=actions)
+                rewards[environment.current_player] += reward
+                agent.observe(terminal=terminal, reward=reward)
+            except:
+                print(f"ENV {environment.state}")
+                print(f"ACT {actions}")
+                print(states)
+                raise
+        print(rewards)
         bar.next()
     bar.finish()
 
