@@ -86,7 +86,7 @@ class Game(Environment):
         return True
 
     def execute_valid_action(self, action):
-        reward = 0
+        reward = 1
         nr = action['nr']
         quantity = action['quant'] + 1
         cont = action['cont']
@@ -122,7 +122,7 @@ class Game(Environment):
         return reward
 
     def execute_invalid_action(self):
-        reward = 0
+        reward = -1
         stone_state = self.get_stone_state()
         stone_stack = [i for i, stone in enumerate(stone_state)
                        if stone[0] == 1
@@ -149,7 +149,7 @@ class Game(Environment):
         self.current_player = (self.current_player + 1) % self.nplayers
 
     def rotate(self, stone):
-        return ((stone + 1) % self.nplayers) + 1
+        return (stone % self.nplayers) + 1
 
     def roll(self):
         dice_state = self.get_dice_state()
