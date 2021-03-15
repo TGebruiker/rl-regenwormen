@@ -37,16 +37,26 @@ class Game(Environment):
         return 8 * 60
 
     def execute(self, actions):
+        terminal = not bool([stone for stone in self.state['stone_lock']
+                             if stone == 0])
+        if terminal:
+            reward = self.end_round()
+            self.next_player()
+            return self.state, terminal, reward
         valid = self.validate(actions)
         if valid:
             reward = self.execute_valid_action(actions)
         else:
             reward = self.execute_invalid_action()
+            
+        terminal = False
         if not valid or actions['cont'] > 0:
+            terminal = not bool([stone for stone in self.state['stone_lock']
+                                 if stone == 0])
+            if terminal:
+                reward += self.end_round()
             self.next_player()
         self.roll()
-        terminal = not bool([stone for stone in self.state['stone_lock']
-                             if stone == 0])
         return self.state, terminal, reward
 
     def validate(self, action):
@@ -86,7 +96,7 @@ class Game(Environment):
         return True
 
     def execute_valid_action(self, action):
-        reward = 1
+        reward = 0.5
         nr = action['nr']
         quantity = action['quant'] + 1
         cont = action['cont']
@@ -118,7 +128,7 @@ class Game(Environment):
                                  and i+21 == dice_sum][0]
             self.state['stone_pos'][highest_stone] = 1
             self.state['stone_lock'][highest_stone] = 0
-            reward += floor(highest_stone/4)+1
+            reward += (floor(highest_stone/4)+1) * 10
         return reward
 
     def execute_invalid_action(self):
@@ -166,3 +176,16 @@ class Game(Environment):
     def get_stone_state(self):
         return [(self.state['stone_pos'][i], self.state['stone_lock'][i])
                 for i in range(16)]
+
+    def end_round(self):
+        stone_state = self.get_stone_state()
+        player_stone_sums = [0 for _ in range(self.nplayers)]
+        for i, stone in enumerate(stone_state):
+            if stone[0] > 0:
+                player_stone_sums[stone[0] - 1] += floor(i/4)+1
+        if player_stone_sums[0] == max(player_stone_sums) and player_stone_sums[0] > 0:
+            return 1000
+        
+        else: return 0
+            
+        
