@@ -1,12 +1,5 @@
 {
-    "agent": "tensorforce",
-    "update": 10,
-    "optimizer": {
-        "optimizer": "adam",
-        "learning_rate": 1e-3
-    },
-    "objective": "policy_gradient",
-    "reward_estimation": {
-        "horizon": 20
-    }
+    "agent": "dqn",
+    "memory": "10",
+    "batch_size": "4"
 }

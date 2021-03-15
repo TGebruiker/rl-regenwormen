@@ -1,5 +1,4 @@
 from tensorforce.environments import Environment
-import numpy as np
 from math import floor
 from random import randint
 
@@ -13,9 +12,9 @@ class Game(Environment):
     def reset(self):
         self.current_player = 0
         self.state = {'stone_pos': [0] * 16,
-                 'stone_lock': [0] * 16,
-                 'dice_value': [0] * 8,
-                 'dice_lock': [0] * 8}
+                      'stone_lock': [0] * 16,
+                      'dice_value': [0] * 8,
+                      'dice_lock': [0] * 8}
         return self.state
 
     def states(self):
@@ -156,7 +155,7 @@ class Game(Environment):
         for i, dice in enumerate(dice_state):
             if dice[1] == 1:
                 continue
-            self.state['dice_value'][i] = randint(0,5)
+            self.state['dice_value'][i] = randint(0, 5)
             self.state['dice_lock'][i] = 0
 
     def get_dice_state(self):
