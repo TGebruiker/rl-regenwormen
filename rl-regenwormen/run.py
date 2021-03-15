@@ -11,7 +11,7 @@ def main(nplayers):
     print("creating environment...")
     environment = Game(nplayers)
     print("creating agents...")
-    run_no_runner(environment, 4)
+    run_no_runner(environment, nplayers)
 
 
 def run_runner(environment):
@@ -35,16 +35,16 @@ def run_runner(environment):
 
 
 def run_no_runner(environment, nplayers):
-    #with open("rl-regenwormen/agent.json", 'r') as fp:
+    # with open("rl-regenwormen/agent.json", 'r') as fp:
     #    agent = json.load(fp=fp)
 
-    agents = [Agent.create(agent='dqn',
-                           memory=480,
-                           batch_size=4,
+    agents = [Agent.create(agent='ppo',
+                           batch_size=10,
+                           learning_rate=1e-3,
                            environment=environment,
-                           #summarizer=dict(
-                           #    directory='summaries',
-                           #    labels='all')
+                           summarizer=dict(
+                               directory='summaries',
+                               summaries='all')
                            ) for i in range(nplayers)]
 
     print("starting training...")
@@ -52,7 +52,7 @@ def run_no_runner(environment, nplayers):
     bar = Bar('Training', max=i)
     rewards = {i: 0 for i in range(nplayers)}
     rewards_total = {i: [] for i in range(nplayers)}
-    for episode in range(10000000):
+    for episode in range(30000):
         for agent in agents:
             agent.reset()
         states = environment.reset()
@@ -78,7 +78,7 @@ def run_no_runner(environment, nplayers):
                 print(states)
                 raise
         names = ["lola", "henry de muis", "pykel", "flo"]
-        print({names[k]: (int(v * 100)/100,  int(np.mean(rewards_total[k]) * 100) / 100) for k, v in rewards.items()})
+        # print({names[k]: (int(v * 100)/100,  int(np.mean(rewards_total[k]) * 100) / 100) for k, v in rewards.items()})
         rewards = {i: 0 for i in range(nplayers)}
         bar.next()
     bar.finish()
