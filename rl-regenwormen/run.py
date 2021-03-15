@@ -14,12 +14,18 @@ def main(nplayers):
     run_runner(environment)
 
 
-def run_runner(env):
-    with open("rl-regenwormen/agent.json", 'r') as fp:
-        agent = json.load(fp=fp)
+def run_runner(environment):
+    agent = Agent.create(agent='dqn',
+                         memory=10,
+                         batch_size=4,
+                         environment=environment,
+                         summarizer=dict(
+                             directory='summaries',
+                             labels='all')
+                         )
     runner = Runner(
         agent=agent,
-        environment=env,
+        environment=environment,
         # num_parallel=5, remote='multiprocessing'
     )
 
@@ -71,7 +77,7 @@ def run_no_runner(environment, nplayers):
                 print(f"ACT {actions}")
                 print(states)
                 raise
-        names = ["lola", "henry de muis", "pykel", "flo"]    
+        names = ["lola", "henry de muis", "pykel", "flo"]
         print({names[k]: (int(v * 100)/100,  int(np.mean(rewards_total[k]) * 100) / 100) for k, v in rewards.items()})
         rewards = {i: 0 for i in range(nplayers)}
         bar.next()
