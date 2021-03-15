@@ -11,7 +11,7 @@ def main(nplayers):
     print("creating environment...")
     environment = Game(nplayers)
     print("creating agents...")
-    run_runner(environment)
+    run_no_runner(environment, 4)
 
 
 def run_runner(env):
@@ -29,16 +29,16 @@ def run_runner(env):
 
 
 def run_no_runner(environment, nplayers):
-    with open("rl-regenwormen/agent.json", 'r') as fp:
-        agent = json.load(fp=fp)
+    #with open("rl-regenwormen/agent.json", 'r') as fp:
+    #    agent = json.load(fp=fp)
 
     agents = [Agent.create(agent='dqn',
-                           memory=10,
+                           memory=480,
                            batch_size=4,
                            environment=environment,
-                           summarizer=dict(
-                               directory='summaries',
-                               labels='all')
+                           #summarizer=dict(
+                           #    directory='summaries',
+                           #    labels='all')
                            ) for i in range(nplayers)]
 
     print("starting training...")
