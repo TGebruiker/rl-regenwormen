@@ -47,10 +47,10 @@ class Game(Environment):
             reward = self.execute_valid_action(actions)
         else:
             reward = 0
-            if self.check_possible_move():
+            if self.check_possible_move() or self.actions['cont'] == 1:
                 reward = -1000
             reward -= self.execute_invalid_action()
-            
+
         terminal = False
         if not valid or actions['cont'] > 0:
             terminal = not bool([stone for stone in self.state['stone_lock']
@@ -96,7 +96,7 @@ class Game(Environment):
             if not avail_stones:
                 return False
         return True
-    
+
     def check_possible_move(self):
         dice_state = self.get_dice_state()
         dice_locks = set([v for v, l in dice_state])
@@ -194,7 +194,5 @@ class Game(Environment):
                 player_stone_sums[stone[0] - 1] += floor(i/4)+1
         if player_stone_sums[0] == max(player_stone_sums) and player_stone_sums[0] > 0:
             return 1000
-        
-        else: return 0
-            
-        
+        else:
+            return 0

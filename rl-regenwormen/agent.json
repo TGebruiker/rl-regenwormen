@@ -1,5 +1,0 @@
-{
-    "agent": "dqn",
-    "memory": "10",
-    "batch_size": "4"
-}
