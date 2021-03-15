@@ -2,6 +2,7 @@ from tensorforce.agents import Agent
 from .game import Game
 from progress.bar import IncrementalBar as Bar
 from tensorforce.execution import Runner
+import numpy as np
 
 import json
 
@@ -10,7 +11,7 @@ def main(nplayers):
     print("creating environment...")
     environment = Game(nplayers)
     print("creating agents...")
-    run_no_runner(environment, 4)
+    run_runner(environment)
 
 
 def run_runner(env):
@@ -44,7 +45,8 @@ def run_no_runner(environment, nplayers):
     i = 10000000
     bar = Bar('Training', max=i)
     rewards = {i: 0 for i in range(nplayers)}
-    for _ in range(10000000):
+    rewards_total = {i: [] for i in range(nplayers)}
+    for episode in range(10000000):
         for agent in agents:
             agent.reset()
         states = environment.reset()
@@ -55,13 +57,23 @@ def run_no_runner(environment, nplayers):
                 actions = agent.act(states=states)
                 states, terminal, reward = environment.execute(actions=actions)
                 rewards[environment.current_player] += reward
+                rewards_total[environment.current_player] += [reward]
+                rewards_total[environment.current_player] = rewards_total[environment.current_player][-300:]
                 agent.observe(terminal=terminal, reward=reward)
-            except EnvironmentError:
+                if terminal:
+                    for agent2 in agents:
+                        if agent2 != agent:
+                            actions = agent2.act(states=states)
+                            states, terminal, reward = environment.execute(actions=actions)
+                            agent2.observe(terminal=True, reward=reward)
+            except:
                 print(f"ENV {environment.state}")
                 print(f"ACT {actions}")
                 print(states)
                 raise
-        print(rewards)
+        names = ["lola", "henry de muis", "pykel", "flo"]    
+        print({names[k]: (int(v * 100)/100,  int(np.mean(rewards_total[k]) * 100) / 100) for k, v in rewards.items()})
+        rewards = {i: 0 for i in range(nplayers)}
         bar.next()
     bar.finish()
 
