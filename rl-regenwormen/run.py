@@ -6,10 +6,13 @@ import os
 
 
 def main():
-    i = 500
+    single = True
+    i = 500000
     nplayers = 1
     agent_path = "agents"
-    for n,agent in enumerate(os.listdir(agent_path)):
+    if single:
+        run(0, agent_path, "ppo.json", 1, i)
+    for n, agent in enumerate(os.listdir(agent_path)):
         p = Process(target=run, args=(n, agent_path, agent, nplayers, i))
         p.start()
 
@@ -34,18 +37,10 @@ def run(n, agent_path, agent, nplayers, i):
         while not terminal:
             try:
                 agent = agents[environment.current_player]
-                current_player = environment.current_player
                 actions = agent.act(states=states)
                 states, terminal, reward = environment.execute(actions=actions)
-                end_of_roll = environment.current_player != current_player
-                agent.observe(terminal=end_of_roll, reward=reward)
-                if terminal:
-                    for agent2 in agents:
-                        if agent2 != agent:
-                            actions = agent2.act(states=states)
-                            states, terminal, reward = environment.execute(actions=actions)
-                            agent2.observe(terminal=True, reward=reward)
-            except:
+                agent.observe(terminal=terminal, reward=reward)
+            except Exception:
                 print(f"ENV {environment.state}")
                 print(f"ACT {actions}")
                 print(states)

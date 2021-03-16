@@ -8,6 +8,7 @@ class Game(Environment):
         super().__init__()
         self.nplayers = nplayers
         self.state = self.reset()
+        self.terminal = False
 
     def reset(self):
         self.current_player = 0
@@ -36,12 +37,6 @@ class Game(Environment):
         return 25
 
     def execute(self, actions):
-        terminal = not bool([stone for stone in self.state['stone_lock']
-                             if stone == 0])
-        if terminal:
-            reward = self.end_round()
-            self.next_player()
-            return self.state, terminal, reward
         valid = self.validate(actions)
         if valid:
             reward = self.execute_valid_action(actions)
@@ -51,15 +46,17 @@ class Game(Environment):
                 reward = -1
             reward -= self.execute_invalid_action()
 
-        terminal = False
-        if not valid or actions['cont'] > 0:
-            terminal = not bool([stone for stone in self.state['stone_lock']
-                                 if stone == 0])
-            if terminal:
-                reward += self.end_round()
+        terminal = sum(self.state['dice_free']) == 0 or actions['cont'] > 0
+        if terminal:
             self.next_player()
+
+        if not bool([stone for stone in self.state['stone_lock']
+                     if stone == 0]):
+            self.reset()
         self.roll()
-        return self.state, terminal, reward
+        
+        action_mask = self.generate_mask()
+        return {**self.state, **action_mask}, terminal, reward
 
     def validate(self, action):
         nr = action['nr']
@@ -124,7 +121,7 @@ class Game(Environment):
                                  and i+21 == dice_sum][0]
             self.state['stone_pos'][highest_stone] = 1
             self.state['stone_lock'][highest_stone] = 0
-            reward += ((highest_stone+1)/16) + 1
+            reward += (((highest_stone+1)/16) + 1) * cont
         else:
             reward += (((nr+1) * quantity) / 48)
         return reward
@@ -177,6 +174,27 @@ class Game(Environment):
             if stone[0] > 0:
                 player_stone_sums[stone[0] - 1] += floor(i/4)+1
         if player_stone_sums[0] == max(player_stone_sums) and player_stone_sums[0] > 0:
-            return 1000
+            return 100
         else:
             return 0
+
+    def generate_mask(self):
+        dice_locked = self.state['dice_lock']
+        dice_free = self.state['dice_free']
+        nr_mask = [False if dice > 0 or dice_free[i] == 0
+                   else True for i, dice in enumerate(dice_locked)]
+        max_quant = max(self.state['dice_free']) - 1
+        quant_mask = [True] * max_quant + [False] * (8-max_quant)
+        dice_sum_combs = [sum(dice_locked) + nr+1 * quant for nr, max_quant in enumerate(dice_free)
+                          for quant in range(1, max_quant+2)]
+        stone_pos = self.state['stone_pos']
+        stone_lock = self.state['stone_lock']
+        stones_on_table = [50] + [stone+21 for stone, pos in enumerate(stone_pos)
+                                  if stone_lock[stone] == 0 and pos == 0]
+        cont_1 = max(dice_sum_combs) >= min(stones_on_table)
+        stones_to_steal = [stone+21 for stone, pos in enumerate(stone_pos)
+                           if stone_lock[stone] == 0 and pos > 1]
+        total = dice_sum_combs + stones_to_steal
+        cont_2 = len(total) > len(set(total))
+        cont_mask = [True, cont_1, cont_2]
+        return dict(nr_mask=nr_mask, quant_mask=quant_mask, cont_mask=cont_mask)
