@@ -1,3 +1,3 @@
 from .run import main as run
 
-run(1)
+run(2)

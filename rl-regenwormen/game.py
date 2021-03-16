@@ -21,8 +21,8 @@ class Game(Environment):
         # 15 stones and 8 dice
         return dict(stone_pos=dict(type='int', shape=(16,), num_values=self.nplayers+1),
                     stone_lock=dict(type='int', shape=(16,), num_values=2),
-                    dice_lock=dict(type='int', shape=(6,), num_values=8),
-                    dice_free=dict(type='int', shape=(6,), num_values=8))
+                    dice_lock=dict(type='int', shape=(6,), num_values=9),
+                    dice_free=dict(type='int', shape=(6,), num_values=9))
 
     def actions(self):
         # action 1: choose number
@@ -47,8 +47,8 @@ class Game(Environment):
             reward = self.execute_valid_action(actions)
         else:
             reward = 0
-            if self.check_possible_move() or self.actions['cont'] == 1:
-                reward = -1000
+            if self.check_possible_move():
+                reward = -1
             reward -= self.execute_invalid_action()
 
         terminal = False
@@ -160,8 +160,9 @@ class Game(Environment):
         return (stone % self.nplayers) + 1
 
     def roll(self):
-        dice_free = self.state['dice_free']
-        for i, dice in range(sum(dice_free)):
+        self.state['dice_free'] = [0] * 6
+        dice_lock = self.state['dice_lock']
+        for _ in range(8 - sum(dice_lock)):
             value = randint(0, 5)
             self.state['dice_free'][value] += 1
 

@@ -35,12 +35,13 @@ def run_runner(environment):
 
 
 def run_no_runner(environment, nplayers):
-    # with open("rl-regenwormen/agent.json", 'r') as fp:
+    #with open("rl-regenwormen/agent.json", 'r') as fp:
     #    agent = json.load(fp=fp)
 
     agents = [Agent.create(agent='ppo',
-                           batch_size=10,
+                           batch_size=100,
                            learning_rate=1e-3,
+                           exploration=0.2,
                            environment=environment,
                            summarizer=dict(
                                directory='summaries',
@@ -60,12 +61,15 @@ def run_no_runner(environment, nplayers):
         while not terminal:
             try:
                 agent = agents[environment.current_player]
+                current_player = environment.current_player
                 actions = agent.act(states=states)
+                #print(actions)
                 states, terminal, reward = environment.execute(actions=actions)
                 rewards[environment.current_player] += reward
                 rewards_total[environment.current_player] += [reward]
                 rewards_total[environment.current_player] = rewards_total[environment.current_player][-300:]
-                agent.observe(terminal=terminal, reward=reward)
+                end_of_roll = environment.current_player != current_player
+                agent.observe(terminal=end_of_roll, reward=reward)
                 if terminal:
                     for agent2 in agents:
                         if agent2 != agent:
@@ -78,7 +82,7 @@ def run_no_runner(environment, nplayers):
                 print(states)
                 raise
         names = ["lola", "henry de muis", "pykel", "flo"]
-        # print({names[k]: (int(v * 100)/100,  int(np.mean(rewards_total[k]) * 100) / 100) for k, v in rewards.items()})
+        print({names[k]: (int(v * 100)/100,  int(np.mean(rewards_total[k]) * 100) / 100) for k, v in rewards.items()})
         rewards = {i: 0 for i in range(nplayers)}
         bar.next()
     bar.finish()
