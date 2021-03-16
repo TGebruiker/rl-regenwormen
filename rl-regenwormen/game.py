@@ -33,7 +33,7 @@ class Game(Environment):
                     cont=dict(type='int', num_values=3))
 
     def max_episode_timesteps(self):
-        return 8 * 60
+        return 25
 
     def execute(self, actions):
         terminal = not bool([stone for stone in self.state['stone_lock']

@@ -8,5 +8,6 @@
     "objective": "policy_gradient",
     "reward_estimation": {
         "horizon": 20
-    }
+    },
+    "exploration": 0.3
 }
