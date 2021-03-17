@@ -153,3 +153,4 @@ dmypy.json
 .idea/**/libraries
 
 summaries/
+checkpoints/ddqn/checkpoint

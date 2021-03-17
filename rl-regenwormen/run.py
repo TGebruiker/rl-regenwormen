@@ -5,16 +5,28 @@ from multiprocessing import Process
 import os
 
 
+def test():
+    environment = Game(1, show=True)
+    agents = [Agent.load(directory='checkpoints/ddqn', format='checkpoint', environment=environment)]
+    states = environment.reset()
+    while True:
+        agent = agents[environment.current_player]
+        actions = agent.act(states=states, independent=True, deterministic=True)
+        states, terminal, reward = environment.execute(actions=actions)
+        agent.observe(terminal=terminal, reward=reward)
+
+
 def main():
     single = True
     i = 500000
     nplayers = 1
     agent_path = "agents"
     if single:
-        run(0, agent_path, "ppo.json", 1, i)
-    for n, agent in enumerate(os.listdir(agent_path)):
-        p = Process(target=run, args=(n, agent_path, agent, nplayers, i))
-        p.start()
+        run(0, agent_path, "ddqn.json", 1, i)
+    else:
+        for n, agent in enumerate(os.listdir(agent_path)):
+            p = Process(target=run, args=(n, agent_path, agent, nplayers, i))
+            p.start()
 
 
 def run(n, agent_path, agent, nplayers, i):
@@ -22,19 +34,18 @@ def run(n, agent_path, agent, nplayers, i):
     agents = [Agent.create(agent=f'{agent_path}/{agent}',
                            environment=environment,
                            summarizer=dict(
-                               directory='summaries',
-                               summaries='all'),
+                               directory=f'summaries/{agent[:-5]}',
+                               summaries=['reward']),
                            saver=dict(
                                directory=f'checkpoints/{agent[:-5]}',
-                               frequency=100)
+                               frequency=50)
                            ) for i in range(nplayers)]
 
-    for i in trange(i, desc=agent[:-5], position=n):
+    for _ in trange(i, desc=agent[:-5], position=n):
         for agent in agents:
             agent.reset()
         states = environment.reset()
-        terminal = False
-        while not terminal:
+        while not environment.terminal:
             try:
                 agent = agents[environment.current_player]
                 actions = agent.act(states=states)

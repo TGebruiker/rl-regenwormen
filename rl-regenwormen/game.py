@@ -4,8 +4,9 @@ from random import randint
 
 
 class Game(Environment):
-    def __init__(self, nplayers=4):
+    def __init__(self, nplayers=4, show=False):
         super().__init__()
+        self.show = show
         self.nplayers = nplayers
         self.state = self.reset()
         self.terminal = False
@@ -16,7 +17,10 @@ class Game(Environment):
                       'stone_lock': [0] * 16,
                       'dice_lock': [0] * 6,
                       'dice_free': [0] * 6}
-        return self.state
+        self.roll()
+        mask = self.generate_mask()
+        self.terminal = False
+        return {**self.state, **mask}
 
     def states(self):
         # 15 stones and 8 dice
@@ -37,25 +41,39 @@ class Game(Environment):
         return 25
 
     def execute(self, actions):
+        if self.show:
+            print("")
+            print(f'Actions: {actions}')
+            print(f'State {self.state}')
         valid = self.validate(actions)
         if valid:
             reward = self.execute_valid_action(actions)
         else:
             reward = 0
-            if self.check_possible_move():
-                reward = -1
-            reward -= self.execute_invalid_action()
+            # if self.check_possible_move():
+            #     reward = -5
+            reward += self.execute_invalid_action()
 
-        terminal = sum(self.state['dice_free']) == 0 or actions['cont'] > 0
+        terminal = sum(self.state['dice_free']) == 0 or actions['cont'] > 0 or not valid
         if terminal:
             self.next_player()
 
         if not bool([stone for stone in self.state['stone_lock']
                      if stone == 0]):
-            self.reset()
+            self.terminal = True
+        if self.show:
+            print(f'Valid: {valid}')
+            print(f'Terminal: {terminal}')
+            print(f'Reward: {reward}')
+            input()
         self.roll()
-        
         action_mask = self.generate_mask()
+        if not any(action_mask['nr_mask']):
+            terminal = True
+            self.next_player()
+            self.roll()
+            action_mask = self.generate_mask()
+        # return self.state, terminal, reward
         return {**self.state, **action_mask}, terminal, reward
 
     def validate(self, action):
@@ -183,7 +201,7 @@ class Game(Environment):
         dice_free = self.state['dice_free']
         nr_mask = [False if dice > 0 or dice_free[i] == 0
                    else True for i, dice in enumerate(dice_locked)]
-        max_quant = max(self.state['dice_free']) - 1
+        max_quant = max(self.state['dice_free'])
         quant_mask = [True] * max_quant + [False] * (8-max_quant)
         dice_sum_combs = [sum(dice_locked) + nr+1 * quant for nr, max_quant in enumerate(dice_free)
                           for quant in range(1, max_quant+2)]
@@ -195,6 +213,6 @@ class Game(Environment):
         stones_to_steal = [stone+21 for stone, pos in enumerate(stone_pos)
                            if stone_lock[stone] == 0 and pos > 1]
         total = dice_sum_combs + stones_to_steal
-        cont_2 = len(total) > len(set(total))
+        cont_2 = len(total) > len(set(total)) and len(stones_to_steal) != 0
         cont_mask = [True, cont_1, cont_2]
         return dict(nr_mask=nr_mask, quant_mask=quant_mask, cont_mask=cont_mask)
