@@ -22,7 +22,7 @@ def main():
     nplayers = 1
     agent_path = "agents"
     if single:
-        run(0, agent_path, "ddqn.json", 1, i)
+        run(0, agent_path, "ppo.json", 1, i)
     else:
         for n, agent in enumerate(os.listdir(agent_path)):
             p = Process(target=run, args=(n, agent_path, agent, nplayers, i))
@@ -31,8 +31,43 @@ def main():
 
 def run(n, agent_path, agent, nplayers, i):
     environment = Game(nplayers)
+    nr_actions = dict(type='int', num_values=6)
+    quant_actions = dict(type='int', num_values=8)
+    cont_actions = dict(type='int', num_values=3)
+    nr_agents = generate_agents(nplayers, nr_actions, environment, agent_path, agent)
+    quant_agents = generate_agents(nplayers, quant_actions, environment, agent_path, agent)
+    cont_agents = generate_agents(nplayers, cont_actions, environment, agent_path, agent)
+    for _ in trange(i, desc=agent[:-5], position=n):
+        for j, agent in enumerate(nr_agents):
+            agent.reset()
+            quant_agents[j].reset()
+            cont_agents[j].reset()
+        states = environment.reset()
+        while not environment.terminal:
+            # try:
+            nr_agent = nr_agents[environment.current_player]
+            quant_agent = quant_agents[environment.current_player]
+            cont_agent = cont_agents[environment.current_player]
+            nr_action = nr_agent.act(states=states)
+            states = environment.execute_nr(nr_action)
+            quant_action = quant_agent.act(states=states)
+            states = environment.execute_quant(quant_action)
+            cont_action = cont_agent.act(states=states)
+            states, terminal, reward = environment.execute(cont_action=cont_action)
+            nr_agent.observe(terminal=terminal, reward=reward)
+            quant_agent.observe(terminal=terminal, reward=reward)
+            cont_agent.observe(terminal=terminal, reward=reward)
+            # except Exception:
+            #     print(f"ENV {environment.state}")
+            #     print(f"ACT {actions}")
+            #     print(states)
+            #     raise
+
+
+def generate_agents(nplayers, actions, environment, agent_path, agent):
     agents = [Agent.create(agent=f'{agent_path}/{agent}',
                            environment=environment,
+                           actions=actions,
                            summarizer=dict(
                                directory=f'summaries/{agent[:-5]}',
                                summaries=['reward']),
@@ -40,22 +75,7 @@ def run(n, agent_path, agent, nplayers, i):
                                directory=f'checkpoints/{agent[:-5]}',
                                frequency=50)
                            ) for i in range(nplayers)]
-
-    for _ in trange(i, desc=agent[:-5], position=n):
-        for agent in agents:
-            agent.reset()
-        states = environment.reset()
-        while not environment.terminal:
-            try:
-                agent = agents[environment.current_player]
-                actions = agent.act(states=states)
-                states, terminal, reward = environment.execute(actions=actions)
-                agent.observe(terminal=terminal, reward=reward)
-            except Exception:
-                print(f"ENV {environment.state}")
-                print(f"ACT {actions}")
-                print(states)
-                raise
+    return agents
 
 
 if __name__ == "__main__":

@@ -18,9 +18,9 @@ class Game(Environment):
                       'dice_lock': [0] * 6,
                       'dice_free': [0] * 6}
         self.roll()
-        mask = self.generate_mask()
+        mask = self.generate_nr_mask()
         self.terminal = False
-        return {**self.state, **mask}
+        return {**self.state, "action_mask": mask}
 
     def states(self):
         # 15 stones and 8 dice
@@ -29,57 +29,51 @@ class Game(Environment):
                     dice_lock=dict(type='int', shape=(6,), num_values=9),
                     dice_free=dict(type='int', shape=(6,), num_values=9))
 
-    def actions(self):
-        # action 1: choose number
-        # action 2: choose quantity
-        # action 3: choose continuation
-        return dict(nr=dict(type='int', num_values=6),
-                    quant=dict(type='int', num_values=8),
-                    cont=dict(type='int', num_values=3))
-
     def max_episode_timesteps(self):
         return 25
 
-    def execute(self, actions):
-        if self.show:
-            print("")
-            print(f'Actions: {actions}')
-            print(f'State {self.state}')
-        valid = self.validate(actions)
-        if valid:
-            reward = self.execute_valid_action(actions)
-        else:
-            reward = 0
-            # if self.check_possible_move():
-            #     reward = -5
-            reward += self.execute_invalid_action()
+    def execute_nr(self, action):
+        self.nr_action = action
+        dice_free = self.state['dice_free']
+        quant = dice_free[action]
+        mask = [True] * quant + [False] * (8-quant)
+        return {**self.state, "action_mask": mask}
 
-        terminal = sum(self.state['dice_free']) == 0 or actions['cont'] > 0 or not valid
-        if terminal:
-            self.next_player()
+    def execute_quant(self, action):
+        self.quant_action = action + 1
+        dice_locked = self.state['dice_lock']
+        dice_sum = sum(dice_locked)
+        extra_sum = (self.nr_action + 1) * (action + 1)
+        total = dice_sum + extra_sum
+        stone_pos = self.state['stone_pos']
+        stone_lock = self.state['stone_lock']
+        stones_on_table = [50] + [stone+21 for stone, pos in enumerate(stone_pos)
+                                  if stone_lock[stone] == 0 and pos == 0]
+        cont_1 = total >= min(stones_on_table)
+        stones_to_steal = [stone+21 for stone, pos in enumerate(stone_pos)
+                           if stone_lock[stone] == 0 and pos > 1]
+        cont_2 = total in stones_to_steal
+        mask = [True, cont_1, cont_2]
+        return {**self.state, "action_mask": mask}
 
+    def execute(self, cont_action):
+        terminal = False
+        reward = self.execute_valid_action(cont_action)
         if not bool([stone for stone in self.state['stone_lock']
                      if stone == 0]):
             self.terminal = True
-        if self.show:
-            print(f'Valid: {valid}')
-            print(f'Terminal: {terminal}')
-            print(f'Reward: {reward}')
-            input()
         self.roll()
-        action_mask = self.generate_mask()
-        if not any(action_mask['nr_mask']):
+        nr_mask = self.generate_nr_mask()
+        if not any(nr_mask) or cont_action > 0:
             terminal = True
             self.next_player()
-            self.roll()
-            action_mask = self.generate_mask()
-        # return self.state, terminal, reward
-        return {**self.state, **action_mask}, terminal, reward
+            nr_mask = self.generate_nr_mask()
+        return {**self.state, "action_mask": nr_mask}, terminal, reward
 
     def validate(self, action):
-        nr = action['nr']
-        quantity = action['quant'] + 1
-        cont = action['cont']
+        nr = action[0]
+        quantity = action[1] + 1
+        cont = action[2]
         stone_state = self.get_stone_state()
         dice_locked, dice_free = self.state['dice_lock'], self.state['dice_free']
         locked_dice = set([i for i, v in enumerate(dice_locked)
@@ -113,9 +107,9 @@ class Game(Environment):
 
     def execute_valid_action(self, action):
         reward = 0
-        nr = action['nr']
-        quantity = action['quant'] + 1
-        cont = action['cont']
+        nr = self.nr_action
+        quantity = self.quant_action
+        cont = action
         stone_state = self.get_stone_state()
         self.state['dice_lock'][nr] = quantity
         self.state['dice_free'][nr] -= quantity
@@ -170,6 +164,7 @@ class Game(Environment):
         self.state['dice_free'] = [0] * 6
         self.state['dice_lock'] = [0] * 6
         self.current_player = (self.current_player + 1) % self.nplayers
+        self.roll()
 
     def rotate(self, stone):
         return (stone % self.nplayers) + 1
@@ -196,23 +191,9 @@ class Game(Environment):
         else:
             return 0
 
-    def generate_mask(self):
+    def generate_nr_mask(self):
         dice_locked = self.state['dice_lock']
         dice_free = self.state['dice_free']
         nr_mask = [False if dice > 0 or dice_free[i] == 0
                    else True for i, dice in enumerate(dice_locked)]
-        max_quant = max(self.state['dice_free'])
-        quant_mask = [True] * max_quant + [False] * (8-max_quant)
-        dice_sum_combs = [sum(dice_locked) + nr+1 * quant for nr, max_quant in enumerate(dice_free)
-                          for quant in range(1, max_quant+2)]
-        stone_pos = self.state['stone_pos']
-        stone_lock = self.state['stone_lock']
-        stones_on_table = [50] + [stone+21 for stone, pos in enumerate(stone_pos)
-                                  if stone_lock[stone] == 0 and pos == 0]
-        cont_1 = max(dice_sum_combs) >= min(stones_on_table)
-        stones_to_steal = [stone+21 for stone, pos in enumerate(stone_pos)
-                           if stone_lock[stone] == 0 and pos > 1]
-        total = dice_sum_combs + stones_to_steal
-        cont_2 = len(total) > len(set(total)) and len(stones_to_steal) != 0
-        cont_mask = [True, cont_1, cont_2]
-        return dict(nr_mask=nr_mask, quant_mask=quant_mask, cont_mask=cont_mask)
+        return nr_mask
