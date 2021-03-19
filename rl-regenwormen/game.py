@@ -16,7 +16,8 @@ class Game(Environment):
         self.state = {'stone_pos': [0] * 16,
                       'stone_lock': [0] * 16,
                       'dice_lock': [0] * 6,
-                      'dice_free': [0] * 6}
+                      'dice_free': [0] * 6,
+                      ''}
         self.roll()
         mask = self.generate_nr_mask()
         self.terminal = False
@@ -59,51 +60,34 @@ class Game(Environment):
     def execute(self, cont_action):
         terminal = False
         reward = self.execute_valid_action(cont_action)
-        if not bool([stone for stone in self.state['stone_lock']
-                     if stone == 0]):
-            self.terminal = True
         self.roll()
         nr_mask = self.generate_nr_mask()
         if not any(nr_mask) or cont_action > 0:
+            if cont_action == 0:
+                self.flip_stone()
             terminal = True
             self.next_player()
             nr_mask = self.generate_nr_mask()
+        if not bool([stone for stone in self.state['stone_lock']
+                     if stone == 0]):
+            self.terminal = True
         return {**self.state, "action_mask": nr_mask}, terminal, reward
 
-    def validate(self, action):
-        nr = action[0]
-        quantity = action[1] + 1
-        cont = action[2]
+    def flip_stone(self):
         stone_state = self.get_stone_state()
-        dice_locked, dice_free = self.state['dice_lock'], self.state['dice_free']
-        locked_dice = set([i for i, v in enumerate(dice_locked)
-                           if v > 0])
-        if nr in locked_dice:
-            return False
-        if dice_free[nr] < quantity:
-            return False
-        regenworm = dice_free[5] > 0
-        if cont > 0 and not regenworm and nr != 5:
-            return False
-        dice_sum = sum(dice_locked) + (nr + 1) * quantity
-        if cont == 1:
-            avail_stones = [i+21 for i, stone in enumerate(stone_state)
-                            if stone[0] == 0
-                            and stone[1] == 0
-                            and i+21 <= dice_sum]
-            if not avail_stones:
-                return False
-        elif cont == 2:
-            avail_stones = [i+21 for i, stone in enumerate(stone_state)
-                            if stone[0] > 1
-                            and stone[1] == 0
-                            and i+21 == dice_sum]
-            if not avail_stones:
-                return False
-        return True
-
-    def check_possible_move(self):
-        return 0 in self.state['dice_lock']
+        stone_stack = [i for i, stone in enumerate(stone_state)
+                       if stone[0] == 1
+                       and stone[1] == 0]
+        if stone_stack:
+            lost_stone = stone_stack[0]
+            self.state['stone_pos'][lost_stone] = 0
+            self.state['stone_lock'][lost_stone] = 0
+        highest_stone = [i for i, stone in enumerate(stone_state)
+                         if stone[0] == 0
+                         and stone[1] == 0]
+        if highest_stone:
+            self.state['stone_pos'][highest_stone[-1]] = 0
+            self.state['stone_lock'][highest_stone[-1]] = 1
 
     def execute_valid_action(self, action):
         reward = 0
@@ -133,28 +117,9 @@ class Game(Environment):
                                  and i+21 == dice_sum][0]
             self.state['stone_pos'][highest_stone] = 1
             self.state['stone_lock'][highest_stone] = 0
-            reward += (((highest_stone+1)/16) + 1) * cont
-        else:
-            reward += (((nr+1) * quantity) / 48)
-        return reward
-
-    def execute_invalid_action(self):
-        reward = -1
-        stone_state = self.get_stone_state()
-        stone_stack = [i for i, stone in enumerate(stone_state)
-                       if stone[0] == 1
-                       and stone[1] == 0]
-        if stone_stack:
-            lost_stone = stone_stack[0]
-            self.state['stone_pos'][lost_stone] = 0
-            self.state['stone_lock'][lost_stone] = 0
-            reward -= ((lost_stone + 1)/16) + 1
-        highest_stone = [i for i, stone in enumerate(stone_state)
-                         if stone[0] == 0
-                         and stone[1] == 0]
-        if highest_stone:
-            self.state['stone_pos'][highest_stone[-1]] = 0
-            self.state['stone_lock'][highest_stone[-1]] = 1
+            reward += (((highest_stone+1)/16) + 1) * cont 
+        # else:
+            # reward += (((nr+1) * quantity) / 48)
         return reward
 
     def next_player(self):

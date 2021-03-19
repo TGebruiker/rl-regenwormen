@@ -22,7 +22,7 @@ def main():
     nplayers = 1
     agent_path = "agents"
     if single:
-        run(0, agent_path, "ppo.json", 1, i)
+        run(0, agent_path, "ddqn.json", 1, i)
     else:
         for n, agent in enumerate(os.listdir(agent_path)):
             p = Process(target=run, args=(n, agent_path, agent, nplayers, i))
@@ -36,7 +36,7 @@ def run(n, agent_path, agent, nplayers, i):
     cont_actions = dict(type='int', num_values=3)
     nr_agents = generate_agents(nplayers, nr_actions, environment, agent_path, agent)
     quant_agents = generate_agents(nplayers, quant_actions, environment, agent_path, agent)
-    cont_agents = generate_agents(nplayers, cont_actions, environment, agent_path, agent)
+    cont_agents = generate_agents(nplayers, cont_actions, environment, agent_path, agent, reward=True)
     for _ in trange(i, desc=agent[:-5], position=n):
         for j, agent in enumerate(nr_agents):
             agent.reset()
@@ -64,17 +64,26 @@ def run(n, agent_path, agent, nplayers, i):
             #     raise
 
 
-def generate_agents(nplayers, actions, environment, agent_path, agent):
-    agents = [Agent.create(agent=f'{agent_path}/{agent}',
-                           environment=environment,
-                           actions=actions,
-                           summarizer=dict(
-                               directory=f'summaries/{agent[:-5]}',
-                               summaries=['reward']),
-                           saver=dict(
-                               directory=f'checkpoints/{agent[:-5]}',
-                               frequency=50)
-                           ) for i in range(nplayers)]
+def generate_agents(nplayers, actions, environment, agent_path, agent, reward=False):
+    if reward:
+        agents = [Agent.create(agent=f'{agent_path}/{agent}',
+                               environment=environment,
+                               actions=actions,
+                               summarizer=dict(
+                                   directory=f'summaries/{agent[:-5]}',
+                                   summaries=['reward']),
+                               saver=dict(
+                                   directory=f'checkpoints/{agent[:-5]}',
+                                   frequency=50)
+                               ) for i in range(nplayers)]
+    else:
+        agents = [Agent.create(agent=f'{agent_path}/{agent}',
+                               environment=environment,
+                               actions=actions,
+                               saver=dict(
+                                   directory=f'checkpoints/{agent[:-5]}',
+                                   frequency=50)
+                               ) for i in range(nplayers)]
     return agents
 
 
