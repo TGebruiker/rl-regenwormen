@@ -17,7 +17,8 @@ class Game(Environment):
                       'stone_lock': [0] * 16,
                       'dice_lock': [0] * 6,
                       'dice_free': [0] * 6,
-                      ''}
+                      'nr_action': 0,
+                      'quant_action': 0}
         self.roll()
         mask = self.generate_nr_mask()
         self.terminal = False
@@ -28,7 +29,9 @@ class Game(Environment):
         return dict(stone_pos=dict(type='int', shape=(16,), num_values=self.nplayers+1),
                     stone_lock=dict(type='int', shape=(16,), num_values=2),
                     dice_lock=dict(type='int', shape=(6,), num_values=9),
-                    dice_free=dict(type='int', shape=(6,), num_values=9))
+                    dice_free=dict(type='int', shape=(6,), num_values=9),
+                    nr_action=dict(type='int', num_values=7),
+                    quant_action=dict(type='int', num_values=9))
 
     def max_episode_timesteps(self):
         return 25
@@ -38,6 +41,7 @@ class Game(Environment):
         dice_free = self.state['dice_free']
         quant = dice_free[action]
         mask = [True] * quant + [False] * (8-quant)
+        self.state["nr_action"] = action + 1
         return {**self.state, "action_mask": mask}
 
     def execute_quant(self, action):
@@ -55,6 +59,7 @@ class Game(Environment):
                            if stone_lock[stone] == 0 and pos > 1]
         cont_2 = total in stones_to_steal
         mask = [True, cont_1, cont_2]
+        self.state["quant_action"] = action + 1
         return {**self.state, "action_mask": mask}
 
     def execute(self, cont_action):
@@ -64,6 +69,7 @@ class Game(Environment):
         nr_mask = self.generate_nr_mask()
         if not any(nr_mask) or cont_action > 0:
             if cont_action == 0:
+                reward -= 0.5
                 self.flip_stone()
             terminal = True
             self.next_player()
@@ -71,6 +77,9 @@ class Game(Environment):
         if not bool([stone for stone in self.state['stone_lock']
                      if stone == 0]):
             self.terminal = True
+            
+        self.state["nr_action"] = 0
+        self.state["quant_action"] = 0
         return {**self.state, "action_mask": nr_mask}, terminal, reward
 
     def flip_stone(self):
@@ -117,9 +126,9 @@ class Game(Environment):
                                  and i+21 == dice_sum][0]
             self.state['stone_pos'][highest_stone] = 1
             self.state['stone_lock'][highest_stone] = 0
-            reward += (((highest_stone+1)/16) + 1) * cont 
-        # else:
-            # reward += (((nr+1) * quantity) / 48)
+            reward += (((highest_stone+1)/16) + 1) * (cont + 1) + 10
+        #else:
+        #    reward += (((nr+1) * quantity) / 48)
         return reward
 
     def next_player(self):

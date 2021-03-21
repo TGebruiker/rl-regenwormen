@@ -1,6 +1,6 @@
 {
     "agent": "ppo",
     "learning_rate": 1e-3,
-    "batch_size": 16,
-    "exploration": 0.3
+    "batch_size": 10,
+    "exploration": 0.05
 }

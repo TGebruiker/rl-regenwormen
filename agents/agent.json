@@ -3,11 +3,11 @@
     "update": 64,
     "optimizer": {
         "optimizer": "adam",
-        "learning_rate": 1e-3
+        "learning_rate": 5e-2
     },
     "objective": "policy_gradient",
     "reward_estimation": {
         "horizon": 20
     },
-    "exploration": 0.3
+    "exploration": 0.2
 }
